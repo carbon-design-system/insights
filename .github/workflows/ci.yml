@@ -18,21 +18,6 @@ jobs:
           cache: yarn
           cache-dependency-path: yarn.lock
 
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Configure GitHub Pages base path
-        shell: bash
-        run: |
-          repo_name="${GITHUB_REPOSITORY#*/}"
-          owner_name="${GITHUB_REPOSITORY%/*}"
-
-          if [[ -f public/CNAME || "$repo_name" == "${owner_name}.github.io" ]]; then
-            echo "PAGES_BASE_PATH=" >> "$GITHUB_ENV"
-          else
-            echo "PAGES_BASE_PATH=/$repo_name" >> "$GITHUB_ENV"
-          fi
-
       - name: Install dependencies
         run: yarn install --immutable
 

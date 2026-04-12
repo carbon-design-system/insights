@@ -6,21 +6,20 @@ on:
       - main
   workflow_dispatch:
 
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  # Build job
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - name: Checkout
@@ -33,35 +32,46 @@ jobs:
           cache: yarn
           cache-dependency-path: yarn.lock
 
-      - name: Configure Pages
+      - name: Setup Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+        with:
+          # Automatically inject basePath in your Next.js configuration file and disable
+          # server side image optimization (https://nextjs.org/docs/api-reference/next/image#unoptimized).
+          #
+          # We keep local defaults in next.config.mjs and let Pages inject the deployment-specific
+          # basePath at build time so this works for both github.io project URLs and the custom domain.
+          static_site_generator: next
 
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Configure GitHub Pages base path
-        shell: bash
-        run: |
-          repo_name="${GITHUB_REPOSITORY#*/}"
-          owner_name="${GITHUB_REPOSITORY%/*}"
-
-          if [[ -f public/CNAME || "$repo_name" == "${owner_name}.github.io" ]]; then
-            echo "PAGES_BASE_PATH=" >> "$GITHUB_ENV"
-          else
-            echo "PAGES_BASE_PATH=/$repo_name" >> "$GITHUB_ENV"
-          fi
+      - name: Restore cache
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: |
+            .next/cache
+          # Generate a new cache whenever packages or source files change.
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
+          # If source files changed but packages didn't, rebuild from a prior cache.
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/yarn.lock') }}-
 
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Build static export
+      - name: Build with Next.js
         run: yarn build:static
 
-      - name: Upload Pages artifact
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: ./out
 
+  # Deployment job
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
