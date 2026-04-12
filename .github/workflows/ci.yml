@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Configure GitHub Pages base path
+        shell: bash
+        run: |
+          repo_name="${GITHUB_REPOSITORY#*/}"
+          owner_name="${GITHUB_REPOSITORY%/*}"
+
+          if [[ -f public/CNAME || "$repo_name" == "${owner_name}.github.io" ]]; then
+            echo "PAGES_BASE_PATH=" >> "$GITHUB_ENV"
+          else
+            echo "PAGES_BASE_PATH=/$repo_name" >> "$GITHUB_ENV"
+          fi
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build static export
+        run: yarn build:static

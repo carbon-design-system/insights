@@ -1,0 +1,36 @@
+@use "@carbon/styles/scss/config" with (
+  $css--font-face: false
+);
+@use "@carbon/react";
+
+:root {
+  @include react.theme(react.$g100);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--cds-background);
+  color: var(--cds-text-primary);
+}
+
+a {
+  color: var(--cds-link-primary);
+}
+
+.app-page {
+  margin-top: 4rem;
+  padding-bottom: 3rem;
+}
+
+.issue-viewer__summary {
+  margin-bottom: 4rem;
+}
+
+.issue-viewer__timestamp {
+  justify-self: end;
+}
