@@ -10,7 +10,9 @@
     "dev": "next dev",
     "build": "next build",
     "build:static": "next build",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "insights": "node scripts/insights.mjs",
+    "test:insights": "node --test scripts/insights/*.test.mjs"
   },
   "dependencies": {
     "@carbon/react": "^1.105.0",

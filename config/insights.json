@@ -1,0 +1,22 @@
+{
+  "github": {
+    "organization": "carbon-design-system",
+    "repository": "carbon-design-system/carbon"
+  },
+  "reviews": {
+    "users": [
+      "kennylam",
+      "tay1orjones",
+      "emyarod",
+      "riddhybansal",
+      "devadula-nandan",
+      "sangeethababu9223",
+      "heloiselui",
+      "maradwan26"
+    ]
+  },
+  "stale": {
+    "days": 14,
+    "ignoredAuthors": ["dependabot", "renovate"]
+  }
+}
