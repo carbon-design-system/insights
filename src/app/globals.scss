@@ -31,6 +31,18 @@ a {
   margin-bottom: 4rem;
 }
 
+.issue-viewer__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.issue-viewer__accordion .cds--accordion__content {
+  padding-inline-end: 0;
+}
+
+.issue-viewer__issue-number,
 .issue-viewer__timestamp {
-  justify-self: end;
+  white-space: nowrap;
 }

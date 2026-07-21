@@ -22,5 +22,8 @@ jobs:
       - name: Install dependencies
         run: corepack yarn install --immutable
 
+      - name: Test webapp API client
+        run: corepack yarn test:webapp
+
       - name: Build static export
         run: corepack yarn build:static

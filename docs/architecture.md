@@ -13,6 +13,11 @@ Next.js is configured as a static export, so builds produce an `out` directory r
 long-running server. The Pages workflow builds that export, uploads it as an artifact, and deploys
 it to GitHub Pages.
 
+The issue viewer fetches its triage list at runtime from the public REST endpoint for organization
+Project 39, view 6. That saved view owns the `Status: 🕵️‍♀️ Triage` filter; the web client paginates
+the filtered results and keeps open issue content. The endpoint supports anonymous browser requests,
+so the deployed application does not contain GitHub credentials.
+
 `next.config.mjs` reads `PAGES_BASE_PATH` when a deployment needs to live below the domain root.
 Local and custom-domain builds normally leave it unset. GitHub's Pages setup action supplies the
 deployment-specific base path during the hosted build, allowing the same configuration to support
@@ -39,6 +44,8 @@ does not affect the web application.
 ## Operational boundaries
 
 - Web changes are validated through the Next.js static-export workflow.
+- The static issue-viewer route depends on GitHub's public Project view endpoint when it runs in a
+  browser; API failures are shown in the page without affecting the rest of the site.
 - CLI changes are validated through `yarn test:insights`, linting, and real-terminal prompt checks.
 - Running the CLI does not build or deploy the web application.
 - Deploying the web application does not execute Insights CLI commands or query GitHub through a

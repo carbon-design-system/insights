@@ -12,7 +12,8 @@
     "build:static": "next build",
     "lint": "eslint .",
     "insights": "node scripts/insights.mjs",
-    "test:insights": "node --test scripts/insights/*.test.mjs"
+    "test:insights": "node --test scripts/insights/*.test.mjs",
+    "test:webapp": "node --test src/features/issue-viewer/api/*.test.mjs src/features/issue-viewer/utils/*.test.mjs"
   },
   "dependencies": {
     "@carbon/react": "^1.105.0",

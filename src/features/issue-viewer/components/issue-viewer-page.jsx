@@ -2,103 +2,130 @@
 
 import { useEffect, useState } from "react";
 import {
-  Heading,
-  Section,
-  Loading,
-  InlineLoading,
-  Grid,
+  Accordion,
+  AccordionItem,
   Column,
-  Tabs,
-  Tab,
-  TabList,
-  TabPanels,
-  TabPanel,
-  ContainedList,
-  ContainedListItem,
+  Grid,
+  Heading,
+  InlineLoading,
+  Loading,
+  Section,
+  Select,
+  SelectItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@carbon/react";
-
-const dayNames = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
-
-const owner = "carbon-design-system";
-const repo = "carbon";
-const label = "status: needs triage :female_detective:";
+import { fetchTriageIssues } from "@/features/issue-viewer/api/fetch-triage-issues.mjs";
+import {
+  groupIssuesByRepository,
+  primaryRepository,
+} from "@/features/issue-viewer/utils/group-issues-by-repository.mjs";
+import {
+  dayNames,
+  filterIssuesByDay,
+  getDayName,
+} from "@/features/issue-viewer/utils/filter-issues-by-day.mjs";
 
 export function IssueViewerPage() {
-  const today = new Date().getDay();
-  const [selectedDay, setSelectedDay] = useState(dayNames[today]);
+  const [selectedDay, setSelectedDay] = useState(null);
   const [issues, setIssues] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
-    const preselectedDay = searchParams.get("day");
+    const requestedDay = searchParams.get("day");
+    const normalizedDay = requestedDay
+      ? requestedDay.charAt(0).toUpperCase() +
+        requestedDay.slice(1).toLowerCase()
+      : null;
 
-    if (preselectedDay) {
-      const formattedDay =
-        preselectedDay.charAt(0).toUpperCase() +
-        preselectedDay.slice(1).toLowerCase();
-
-      if (dayNames.includes(formattedDay)) {
-        setSelectedDay(formattedDay);
-      }
-    }
+    setSelectedDay(
+      dayNames.includes(normalizedDay) ? normalizedDay : getDayName(new Date())
+    );
   }, []);
 
   useEffect(() => {
-    async function fetchIssues() {
-      setLoading(true);
-      setError(null);
+    const abortController = new AbortController();
 
+    async function loadIssues() {
       try {
-        const apiUrl = `https://api.github.com/repos/${owner}/${repo}/issues?state=open&labels=${encodeURIComponent(label)}&per_page=100`;
-        const response = await fetch(apiUrl);
+        const nextIssues = await fetchTriageIssues({
+          signal: abortController.signal,
+        });
 
-        if (!response.ok) {
-          throw new Error(`GitHub API responded with ${response.status}`);
+        if (!abortController.signal.aborted) {
+          setIssues(nextIssues);
         }
-
-        const data = await response.json();
-        setIssues(data);
       } catch (fetchError) {
-        setError(fetchError.message);
-        setIssues([]);
+        if (fetchError.name !== "AbortError") {
+          setError(fetchError.message);
+          setIssues([]);
+        }
       } finally {
-        setLoading(false);
+        if (!abortController.signal.aborted) {
+          setLoading(false);
+        }
       }
     }
 
-    fetchIssues();
+    loadIssues();
+
+    return () => abortController.abort();
   }, []);
 
-  const issuesByDay = dayNames.reduce((accumulator, day) => {
-    accumulator[day] = issues.filter((issue) => {
-      const createdDate = new Date(issue.created_at);
-      const issueDayName = dayNames[createdDate.getUTCDay()];
+  const selectedIssues = selectedDay
+    ? filterIssuesByDay(issues, selectedDay)
+    : [];
+  const issueNoun = selectedIssues.length === 1 ? "issue" : "issues";
+  const repositoryGroups = groupIssuesByRepository(selectedIssues);
 
-      return issueDayName === day;
-    });
+  function handleDayChange(event) {
+    const nextDay = event.target.value;
+    const nextUrl = new URL(window.location.href);
 
-    return accumulator;
-  }, {});
+    nextUrl.searchParams.set("day", nextDay.toLowerCase());
+    window.history.replaceState(
+      {},
+      "",
+      `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`
+    );
+    setSelectedDay(nextDay);
+  }
 
   return (
     <>
-      {loading && <Loading active />}
+      {(loading || !selectedDay) && <Loading active />}
 
-      {!loading && (
+      {!loading && selectedDay && (
         <Grid narrow fullWidth className="app-page">
           <Column sm={4} md={8} lg={16}>
             <Section className="issue-viewer__summary">
-              <Heading>{issues.length} monorepo issues need triaged</Heading>
+              <div className="issue-viewer__heading">
+                <Heading
+                  aria-label={`${selectedIssues.length} ${issueNoun} opened on a ${selectedDay}`}
+                >
+                  {selectedIssues.length} {issueNoun} opened on a
+                </Heading>
+                <Select
+                  hideLabel
+                  id="issue-viewer-day"
+                  inline
+                  labelText="Day of week"
+                  onChange={handleDayChange}
+                  size="md"
+                  value={selectedDay}
+                >
+                  {dayNames.map((day) => (
+                    <SelectItem key={day} text={day} value={day} />
+                  ))}
+                </Select>
+              </div>
               {error && (
                 <InlineLoading
                   status="error"
@@ -109,62 +136,53 @@ export function IssueViewerPage() {
           </Column>
 
           <Column sm={4} md={8} lg={16}>
-            <Tabs
-              defaultSelectedIndex={dayNames.indexOf(selectedDay)}
-              key={`issue-tabs-${selectedDay}`}
+            <Accordion
+              align="start"
+              aria-label="Issues grouped by repository"
+              className="issue-viewer__accordion"
+              key={selectedDay}
             >
-              <TabList contained fullWidth aria-label="Issues grouped by day">
-                {dayNames.map((day) => (
-                  <Tab key={day} disabled={!issuesByDay[day]?.length}>
-                    {day} ({issuesByDay[day]?.length || 0})
-                  </Tab>
-                ))}
-              </TabList>
-              <TabPanels>
-                {dayNames.map((day) => (
-                  <TabPanel key={`issue-tab-panel-${day}`}>
-                    {issuesByDay[day]?.length ? (
-                      <ContainedList
-                        label={`${issuesByDay[day].length} issues opened on a ${day}`}
-                      >
-                        {issuesByDay[day].map((issue) => (
-                          <ContainedListItem key={issue.id}>
-                            <Grid condensed>
-                              <Column sm={1} md={1} lg={1}>
-                                #{issue.number}
-                              </Column>
-                              <Column sm={2} md={5} lg={11}>
-                                <a
-                                  href={issue.html_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  {issue.title}
-                                </a>
-                              </Column>
-                              <Column
-                                sm={1}
-                                md={2}
-                                lg={4}
-                                className="issue-viewer__timestamp"
+              {repositoryGroups.map(({ name, issues: repositoryIssues }) => (
+                <AccordionItem
+                  key={name}
+                  open={name === primaryRepository}
+                  title={`${name} (${repositoryIssues.length})`}
+                >
+                  <TableContainer>
+                    <Table size="lg">
+                      <TableHead>
+                        <TableRow>
+                          <TableHeader scope="col">Issue</TableHeader>
+                          <TableHeader scope="col">Title</TableHeader>
+                          <TableHeader scope="col">Created</TableHeader>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {repositoryIssues.map((issue) => (
+                          <TableRow key={issue.id}>
+                            <TableCell className="issue-viewer__issue-number">
+                              #{issue.number}
+                            </TableCell>
+                            <TableCell>
+                              <a
+                                href={issue.html_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
                               >
-                                Created on:{" "}
-                                {new Date(issue.created_at).toLocaleString()}
-                              </Column>
-                            </Grid>
-                          </ContainedListItem>
+                                {issue.title}
+                              </a>
+                            </TableCell>
+                            <TableCell className="issue-viewer__timestamp">
+                              {new Date(issue.created_at).toLocaleString()}
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </ContainedList>
-                    ) : (
-                      <p>
-                        There are no triageable issues that were created on a{" "}
-                        {day}.
-                      </p>
-                    )}
-                  </TabPanel>
-                ))}
-              </TabPanels>
-            </Tabs>
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </AccordionItem>
+              ))}
+            </Accordion>
           </Column>
         </Grid>
       )}
